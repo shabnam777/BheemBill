@@ -307,189 +307,137 @@ class _BillScreenState extends State<BillScreen> {
   // ---------------- STEP 1: Bill Period + Party details ----------------
   Widget _buildStep1() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKeys[0],
-        child: Column(
-          children: [
-            // Start Date - End Date ek saath yahan se select hoga
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFFD1D5DB)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1E293B).withOpacity(0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKeys[0],
+          child: Column(
+            children: [
+              // Start Date - End Date ek saath yahan se select hoga
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white,
+                  border: Border.all(color: const Color(0xFFD1D5DB)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1E293B).withOpacity(0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.date_range, color: Color(0xFF1D4ED8)),
+                  title: const Text(
+                    'Bill Period',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                   ),
-                ],
+                  subtitle: Text(
+                    _formatRange(_startDate, _endDate),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                  ),
+                  trailing: const Icon(Icons.calendar_month, color: Color(0xFF1D4ED8)),
+                  onTap: _pickDateRange,
+                ),
               ),
-              child: ListTile(
-             
-                leading: const Icon(Icons.date_range, color: Color(0xFF1D4ED8)),
-                title: const Text(
-                  'Bill Period',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                ),
-                subtitle: Text(
-                  _formatRange(_startDate, _endDate),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                ),
-                trailing: const Icon(Icons.calendar_month, color: Color(0xFF1D4ED8)),
-                onTap: _pickDateRange,
+              const SizedBox(height: 8),
+              PremiumTextField(
+                controller: setNoController,
+                validator: (v) => (v == null || v.isEmpty) ? 'Market Debit required' : null,
+                label: 'Market Debit',
               ),
-            ),
-            const SizedBox(height: 12),
-            PremiumTextField(
-              controller: setNoController,
-              validator: (v) => (v == null || v.isEmpty) ? 'Market Debit required' : null,
-              label: 'Market Debit',
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-            // ---- Ek row me: Weft+Party Name (bada) + KG (chota) + Rate (chota) ----
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3, // sabse bada field
-                  child: PremiumTextField(
-                    controller: partyNameController,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
-                    label: 'Weft Name + Party Name',
-                  ),
+              // ---- Ek row me: Weft+Party Name (bada) + KG (chota) + Rate (chota) ----
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: partyNameController,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
+                  label: 'Weft Name + Party Name',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // KG - chota
-                  child: PremiumTextField(
-                    controller: kgController,
-                    keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'KG required' : null,
-                    label: 'KG',
-                  ),
+                right: PremiumTextField(
+                  controller: kgController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (v == null || v.isEmpty) ? 'KG required' : null,
+                  label: 'KG',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // Rate - chota
-                  child: PremiumTextField(
-                    controller: rateController,
-                    keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
-                    label: 'Rate',
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // Rate - chota
-                  child: PremiumTextField(
-                    controller: rateGSTController,
-                    keyboardType: TextInputType.none,
-                    label: 'Total',
-                  ),
-                ),
-                // thoda gap
-              ],
-            ),
-            const SizedBox(height: 12),
+              ),
 
-            Divider(
-              color: Colors.green.shade400,
-              thickness: 3,
-              radius: BorderRadius.circular(10),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3, // sabse bada field
-                  child: PremiumTextField(
-                    controller: weftNameController,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
-                    label: 'Warp Name + Party Name',
-                  ),
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: rateController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
+                  label: 'Rate',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // KG - chota
-                  child: PremiumTextField(
-                    controller: totalConsumptionController,
-                    keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Consumption required' : null,
-                    label: 'Consumption',
-                  ),
+                right: PremiumTextField(
+                  controller: rateGSTController,
+                  keyboardType: TextInputType.none,
+                  label: 'Total',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // Rate - chota
-                  child: PremiumTextField(
-                    controller: warpRateController,
-                    keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
-                    label: 'Rate',
-                  ),
-                ),
+              ),
+              const PremiumDivider(),
 
-                // thoda gap
-              ],
-            ),
-            const SizedBox(height: 12),
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: weftNameController,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
+                  label: 'Warp Name + Party Name',
+                ),
+                right: PremiumTextField(
+                  controller: totalConsumptionController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Consumption required' : null,
+                  label: 'Consumption',
+                ),
+              ),
 
-            Row(
-              children: [
-                Expanded(
-                  flex: 3, // Rate - chota
-                  child: PremiumTextField(
-                    controller: totalCutController,
-                    keyboardType: TextInputType.none,
-                    label: 'Total Cut',
-                  ),
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: warpRateController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
+                  label: 'Rate',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // Rate - chota
-                  child: PremiumTextField(
-                    controller: perCutController,
-                    keyboardType: TextInputType.none,
-                    label: 'Per Cut',
-                  ),
+                right: PremiumTextField(
+                  controller: totalCutController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
+                  label: 'Total Cut',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // Rate - chota
-                  child: PremiumTextField(
-                    controller: warpTotalController,
-                    keyboardType: TextInputType.none,
-                    label: 'Total',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Divider(
-              color: Colors.green.shade400,
-              thickness: 3,
-              radius: BorderRadius.circular(10),
-            ),
+              ),
 
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3, // sabse bada field
-                  child: PremiumTextField(
-                    controller: totalDoriController,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Dori required' : null,
-                    label: 'Total Dori',
-                  ),
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: perCutController,
+                  keyboardType: TextInputType.none,
+                  label: 'Per Cut',
                 ),
-                const SizedBox(width: 10),
+                right: PremiumTextField(
+                  controller: warpTotalController,
+                  keyboardType: TextInputType.none,
+                  label: 'Total',
+                ),
+              ),
+
+              const PremiumDivider(),
+
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: totalDoriController,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Dori required' : null,
+                  label: 'Total Dori',
+                ),
+                right: PremiumTextField(
+                  controller: finalAmountController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Total required' : null,
+                  label: 'Total',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
-                  flex: 2, // KG - chota
                   child: PremiumTextField(
                     controller: zyadaBachaController,
                     keyboardType: TextInputType.none,
@@ -504,24 +452,10 @@ class _BillScreenState extends State<BillScreen> {
                     label: 'Less / Excess',
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2, // Rate - chota
-                  child: PremiumTextField(
-                    controller: finalAmountController,
-                    keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Total required' : null,
-                    label: 'Total',
-                  ),
-                ),
-
-                // thoda gap
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+              ]),
+            ],
+          ),
+        ));
   }
 
   // ---------------- STEP 2: GST + future fields ----------------
@@ -741,6 +675,71 @@ class PremiumButton extends StatelessWidget {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class TwoFieldRow extends StatelessWidget {
+  final Widget left;
+  final Widget right;
+  final double spacing;
+  final int leftFlex;
+  final int rightFlex;
+
+  const TwoFieldRow({
+    super.key,
+    required this.left,
+    required this.right,
+    this.spacing = 10,
+    this.leftFlex = 1,
+    this.rightFlex = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0, top: 4.0), // Add some vertical spacing between rows
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: leftFlex,
+            child: left,
+          ),
+          SizedBox(width: spacing),
+          Expanded(
+            flex: rightFlex,
+            child: right,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PremiumDivider extends StatelessWidget {
+  final Color? color;
+  final double thickness;
+  final double radius;
+  final EdgeInsetsGeometry? margin;
+
+  const PremiumDivider({
+    super.key,
+    this.color,
+    this.thickness = 3,
+    this.radius = 10,
+    this.margin = const EdgeInsets.symmetric(vertical: 12),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: margin!,
+      child: Divider(
+        color: color ?? Colors.green.shade400,
+        thickness: thickness,
+        radius: BorderRadius.circular(radius),
       ),
     );
   }
