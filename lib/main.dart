@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'models/bill.dart';
-import 'screens/Bill_screen.dart';
+import 'screens/bill_screen.dart';
 
 void main() {
   runApp(const BillingApp());
