@@ -1,15 +1,14 @@
-name: Build, Release & Notify
+name: Flutter CI/CD
 
 on:
   push:
-    branches: [main]
-
-permissions:
-  contents: write # needed to create GitHub Releases
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  release:
-    name: Build APK, Create Release, Send Email
+  build:
+    name: Analyze, Test & Build APK
     runs-on: ubuntu-latest
 
     steps:
@@ -19,46 +18,34 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          channel: 'stable'
           cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze
+      - name: Analyze code
         run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
         continue-on-error: true
 
       - name: Build release APK
         run: flutter build apk --release
 
-      # Read version from pubspec.yaml (e.g. 1.0.0+1)
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
       - name: Extract version
         id: version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION-run${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
-      - name: Rename APK
-        run: |
-          mkdir -p release-output
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             release-output/billing_app-${{ steps.version.outputs.version }}.apk
-
-      # Creates a GitHub Release and uploads the APK as a downloadable asset
-      - name: Create GitHub Release
-        id: gh_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: "Billing App ${{ steps.version.outputs.version }}"
-          body: |
-            Automated build from commit ${{ github.sha }}.
-            Download the APK below and install it to update.
-          files: release-output/*.apk
-
-      # Sends an email to notify that a new build/version is ready
       - name: Send email notification
         uses: dawidd6/action-send-mail@v3
         with:
@@ -66,14 +53,12 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Billing App - New Update Available (v${{ steps.version.outputs.version }})"
+          subject: "Billing App - New Build Ready (v${{ steps.version.outputs.version }})"
           to: ${{ secrets.EMAIL_TO }}
           from: Billing App CI
           body: |
-            A new version of Billing App has been built and released.
+            A new build of Billing App is ready.
 
             Version: ${{ steps.version.outputs.version }}
             Commit: ${{ github.sha }}
-            Download APK: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}
-
-            Install the APK on your device to update to the latest version.
+            Check the Actions tab for the build artifact.
