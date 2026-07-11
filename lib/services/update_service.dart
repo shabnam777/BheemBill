@@ -1,11 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
-/// Checks GitHub Releases for a newer app version than the one installed.
-///
-/// IMPORTANT: set your GitHub repo below (owner/repo).
+/// Checks GitHub Releases for a newer app version than the one installed,
+/// and can download + trigger install of the new APK directly.
 class UpdateInfo {
   final String latestVersion;
   final String downloadUrl;
@@ -35,7 +38,6 @@ class UpdateService {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final tagName = (data['tag_name'] as String?) ?? '';
-      // tag format from CI is "vX.Y.Z-runN" — extract just X.Y.Z
       final latestVersion = tagName.replaceFirst('v', '').split('-').first;
 
       final assets = (data['assets'] as List?) ?? [];
@@ -61,12 +63,10 @@ class UpdateService {
       }
       return null;
     } catch (_) {
-      // Network error / no releases yet — fail silently.
       return null;
     }
   }
 
-  /// Simple semver-ish comparison: returns true if [latest] > [current].
   static bool _isNewer(String latest, String current) {
     List<int> parse(String v) => v.split('.').map((p) => int.tryParse(p) ?? 0).toList();
 
@@ -80,5 +80,36 @@ class UpdateService {
       if (lv != cv) return lv > cv;
     }
     return false;
+  }
+
+  /// Downloads the APK to app-specific storage and opens the
+  /// Android install prompt directly — no browser involved.
+  /// [onProgress] gives a value between 0.0 and 1.0.
+  static Future<void> downloadAndInstall(
+    String url, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+    final filePath = '${dir.path}/app-update.apk';
+
+    // Remove old file if it exists, to avoid conflicts.
+    final file = File(filePath);
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    final dio = Dio();
+    await dio.download(
+      url,
+      filePath,
+      onReceiveProgress: (received, total) {
+        if (total > 0 && onProgress != null) {
+          onProgress(received / total);
+        }
+      },
+    );
+
+    // Opens Android's package installer with the downloaded APK.
+    await OpenFile.open(filePath);
   }
 }
