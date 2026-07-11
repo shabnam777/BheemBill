@@ -1,4 +1,6 @@
 import 'package:billing_app/models/bill_item.dart';
+import 'package:billing_app/models/constants.dart';
+import 'package:billing_app/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -12,6 +14,8 @@ class BillScreen extends StatefulWidget {
 class _BillScreenState extends State<BillScreen> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
+  double bales = 0;
+  double finalAmount = 0;
   final int _totalSteps = 3;
   final List<GlobalKey<FormState>> _formKeys = List.generate(2, (_) => GlobalKey<FormState>());
 
@@ -21,10 +25,10 @@ class _BillScreenState extends State<BillScreen> {
 
   final partyNameController = TextEditingController(); // ab isi me Weft Name + Party Name dono aayenge
   final weftNameController = TextEditingController();
-  final setNoController = TextEditingController();
+  final marketDebtControler = TextEditingController();
   final warpRateController = TextEditingController();
   final rateController = TextEditingController();
-  final rateGSTController = TextEditingController();
+  final weftTotalController = TextEditingController();
   final kgController = TextEditingController();
   final totalConsumptionController = TextEditingController();
   final perCutController = TextEditingController();
@@ -36,17 +40,36 @@ class _BillScreenState extends State<BillScreen> {
   final totalCutController = TextEditingController();
   final totalController = TextEditingController();
   final warpTotalController = TextEditingController();
-  final billDateController = TextEditingController(); // "start - end" range dikhayega
+  final otherExpenseController = TextEditingController(); // "Other Expense" field added
+  final billDateController = TextEditingController();
+  final creditAmount = TextEditingController();
+
+  final marketCredit = TextEditingController();
+
+  // "start - end" range dikhayega
+
+  // step 2
+
+  final creditDate = TextEditingController();
+  final creditParty = TextEditingController();
+  final baleNo = TextEditingController();
+
+  final totalTakha = TextEditingController();
+  final totalMtr = TextEditingController();
+  final creditRate = TextEditingController();
+  final creditFinalAmount = TextEditingController();
+  final debitFinalAmount = TextEditingController();
+  final mtrAvg = TextEditingController();
 
   Color _lessZyadaColor = const Color(0xFF1E293B);
 
-  double gstAmount(double rate, double kg) => rate / 105 * 100 / 5 * kg;
+  double gstAmount(double rate, double kg) => rate / gst5 * kg;
 
   double totalAmount(double rate, double totalConsumption) => rate * totalConsumption;
 
-  // double warpAmount(double totalConsumption, ) => warpRate() * totalConsumption / 5 / 105 * 100;
+  // double warpAmount(double totalConsumption, ) => warpRate() * totalConsumption / gst5;
 
-  double warpRate(double rate) => rate / 105 * 100 / 5 + 19;
+  double warpRate(double rate) => rate / gst5 + sizingCharge;
 
   double perCutAmount(double total, double totalCut) => total / totalCut;
 
@@ -57,9 +80,9 @@ class _BillScreenState extends State<BillScreen> {
     _pageController.dispose();
     partyNameController.dispose();
     weftNameController.dispose();
-    setNoController.dispose();
+    marketDebtControler.dispose();
     rateController.dispose();
-    rateGSTController.dispose();
+    weftTotalController.dispose();
     totalConsumptionController.dispose();
     perCutController.dispose();
     pagarController.dispose();
@@ -77,7 +100,7 @@ class _BillScreenState extends State<BillScreen> {
   void clear() {
     partyNameController.clear();
     weftNameController.clear();
-    setNoController.clear();
+    marketDebtControler.clear();
     rateController.clear();
     totalConsumptionController.clear();
     perCutController.clear();
@@ -88,14 +111,41 @@ class _BillScreenState extends State<BillScreen> {
     doriController.clear();
     totalCutController.clear();
     totalController.clear();
-    rateGSTController.clear();
+    weftTotalController.clear();
     kgController.clear();
+  }
+
+  void _calculateDifference() {
+    final text = baleNo.text.trim().toLowerCase();
+    // Matches patterns like "65 to 75", "65-75", "65 - 75"
+    final regex = RegExp(r'(\d+(\.\d+)?)\s*(?:to|-)\s*(\d+(\.\d+)?)');
+    final match = regex.firstMatch(text);
+
+    if (match != null) {
+      final from = double.tryParse(match.group(1)!) ?? 0;
+      final to = double.tryParse(match.group(3)!) ?? 0;
+      setState(() {
+        bales = to - from; // 75 - 65 = 10
+      });
+    } else {
+      setState(() {
+        bales = 0.0; // invalid format
+      });
+    }
+
+    totalTakha.text = (bales * takhaInOneBl).toStringAsFixed(0);
+  }
+
+  void mtrAverage() {
+    var takha = double.tryParse(totalTakha.text);
+    var totalMeter = double.tryParse(totalMtr.text);
+    mtrAvg.text = (totalMeter! / takha!).toStringAsFixed(0);
   }
 
   void fillFrom(BillItem item) {
     partyNameController.text = item.partyName;
     weftNameController.text = item.weftName;
-    setNoController.text = item.setNo;
+    marketDebtControler.text = item.setNo;
     rateController.text = item.rate.toString();
     totalConsumptionController.text = item.totalConsumption.toString();
     perCutController.text = item.perCut.toString();
@@ -109,13 +159,13 @@ class _BillScreenState extends State<BillScreen> {
     kgController.text = item.kg.toString();
     billDateController.text = _formatRange(item.startDate, item.endDate);
 
-    rateGSTController.text = gstAmount(item.rate, item.kg).toStringAsFixed(2);
+    weftTotalController.text = gstAmount(item.rate, item.kg).toStringAsFixed(2);
   }
 
   BillItem toBillItem() => BillItem(
         partyName: partyNameController.text,
         weftName: weftNameController.text,
-        setNo: setNoController.text,
+        setNo: marketDebtControler.text,
         rate: double.tryParse(rateController.text) ?? 0,
         totalConsumption: double.tryParse(totalConsumptionController.text) ?? 0,
         perCut: double.tryParse(perCutController.text) ?? 0,
@@ -130,7 +180,7 @@ class _BillScreenState extends State<BillScreen> {
         kg: double.tryParse(kgController.text) ?? 0,
         rateGST: gstAmount(double.tryParse(rateController.text) ?? 0, double.tryParse(kgController.text) ?? 0),
         total: totalAmount(
-          double.tryParse(rateGSTController.text) ?? 0,
+          double.tryParse(weftTotalController.text) ?? 0,
           double.tryParse(totalConsumptionController.text) ?? 0,
         ),
       );
@@ -181,13 +231,31 @@ class _BillScreenState extends State<BillScreen> {
     warpRateController.addListener(updateWarpTotal);
     totalCutController.addListener(updateWarpTotal);
     kgController.addListener(_updateGST);
+    totalDoriController.addListener(lessZyadaAmount);
+    pagarController.addListener(lessZyadaAmount);
+    baleNo.addListener(_calculateDifference);
+    totalMtr.addListener(mtrAverage);
   }
 
   void _updateGST() {
     final rate = double.tryParse(rateController.text) ?? 0;
     final kg = double.tryParse(kgController.text) ?? 0;
-    rateGSTController.text = gstAmount(rate, kg).toStringAsFixed(0);
+    weftTotalController.text = gstAmount(rate, kg).toStringAsFixed(0);
     totalController.text = totalAmount(rate, double.tryParse(totalConsumptionController.text) ?? 0).toStringAsFixed(0);
+  }
+
+  void setFinalAmounts() {
+    final debt = double.tryParse(marketDebtControler.text) ?? 0;
+    final expense = double.tryParse(otherExpenseController.text) ?? 0;
+    final weftTotal = double.tryParse(weftTotalController.text) ?? 0;
+    final warpTotal = double.tryParse(warpTotalController.text) ?? 0;
+    final pagar = double.tryParse(pagarController.text) ?? 0;
+
+    final creditFinal = double.tryParse(creditAmount.text) ?? 0;
+    final credit = double.tryParse(marketCredit.text) ?? 0;
+    debitFinalAmount.text = (debt + expense + weftTotal + warpTotal + pagar).toStringAsFixed(0);
+    creditFinalAmount.text = (creditFinal + credit).toStringAsFixed(0);
+    finalAmount = (double.tryParse(creditFinalAmount.text) ?? 0) - (double.tryParse(debitFinalAmount.text) ?? 0);
   }
 
   void updateWarpTotal() {
@@ -199,6 +267,15 @@ class _BillScreenState extends State<BillScreen> {
       double.tryParse(warpTotalController.text) ?? 0,
       double.tryParse(totalCutController.text) ?? 1, // Avoid division by zero
     ).toStringAsFixed(0);
+  }
+
+  void lessZyadaAmount() {
+    final totalDori = double.tryParse(totalDoriController.text) ?? 0;
+    final pagarAmount = double.tryParse(pagarController.text) ?? 0;
+    zyadaBachaController.text = (totalDori * pagar - pagarAmount).toStringAsFixed(0);
+    setState(() {
+      _lessZyadaColor = double.tryParse(zyadaBachaController.text)! < 0 ? Colors.red : Colors.green;
+    });
   }
 
   void _goNext() {
@@ -229,7 +306,7 @@ class _BillScreenState extends State<BillScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // final isLastStep = _currentStep == _totalSteps - 1;
+    final isLastStep = _currentStep == _totalSteps - 1;
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7FA),
       body: SafeArea(
@@ -245,29 +322,44 @@ class _BillScreenState extends State<BillScreen> {
                   end: Alignment.centerRight,
                 ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Weekly Outstanding Bill',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
-                  // Text(
-                  //   'Step ${_currentStep + 1}/$_totalSteps',
-                  //   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey[600]),
-                  // ),
+                  Text(
+                    'Step ${_currentStep + 1}/$_totalSteps',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+                  ),
                 ],
               ),
             ),
             // ---------- Progress bar ----------
-
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: List.generate(_totalSteps, (index) {
+                  final isActive = index <= _currentStep;
+                  return Expanded(
+                    child: Container(
+                      margin: EdgeInsets.only(right: index == _totalSteps - 1 ? 0 : 6),
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: isActive ? Colors.indigo : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
             Expanded(
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildStep1(),
-                ],
+                children: [_buildStep1(), _buildStep2()],
               ),
             ),
             // ---------- Back / Next buttons (Back hamesha visible) ----------
@@ -283,7 +375,7 @@ class _BillScreenState extends State<BillScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         side: const BorderSide(color: Colors.indigo),
                       ),
-                      child: const Text('Save', style: TextStyle(color: Colors.indigo)),
+                      child: const Text('Prev', style: TextStyle(color: Colors.indigo)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -291,8 +383,8 @@ class _BillScreenState extends State<BillScreen> {
                     flex: 3,
                     child: PremiumButton(
                       onPressed: _goNext,
-                      label: 'Preview & Generate PDF',
-                      icon: Icons.picture_as_pdf,
+                      label: isLastStep ? 'Preview & Generate PDF' : 'Next',
+                      icon: isLastStep ? Icons.picture_as_pdf : Icons.arrow_forward,
                     ),
                   ),
                 ],
@@ -327,6 +419,10 @@ class _BillScreenState extends State<BillScreen> {
                   ],
                 ),
                 child: ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -4), // negative = zyada compact
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+
                   leading: const Icon(Icons.date_range, color: Color(0xFF1D4ED8)),
                   title: const Text(
                     'Bill Period',
@@ -341,10 +437,16 @@ class _BillScreenState extends State<BillScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              PremiumTextField(
-                controller: setNoController,
-                validator: (v) => (v == null || v.isEmpty) ? 'Market Debit required' : null,
-                label: 'Market Debit',
+              TwoFieldRow(
+                left: PremiumTextField(
+                  controller: marketDebtControler,
+                  label: 'Market Debit',
+                ),
+                right: PremiumTextField(
+                  controller: otherExpenseController,
+                  keyboardType: TextInputType.number,
+                  label: 'Other Expense',
+                ),
               ),
               const SizedBox(height: 8),
 
@@ -352,13 +454,11 @@ class _BillScreenState extends State<BillScreen> {
               TwoFieldRow(
                 left: PremiumTextField(
                   controller: partyNameController,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
                   label: 'Weft Name + Party Name',
                 ),
                 right: PremiumTextField(
                   controller: kgController,
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'KG required' : null,
                   label: 'KG',
                 ),
               ),
@@ -367,11 +467,10 @@ class _BillScreenState extends State<BillScreen> {
                 left: PremiumTextField(
                   controller: rateController,
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
                   label: 'Rate',
                 ),
                 right: PremiumTextField(
-                  controller: rateGSTController,
+                  controller: weftTotalController,
                   keyboardType: TextInputType.none,
                   label: 'Total',
                 ),
@@ -381,13 +480,11 @@ class _BillScreenState extends State<BillScreen> {
               TwoFieldRow(
                 left: PremiumTextField(
                   controller: weftNameController,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
                   label: 'Warp Name + Party Name',
                 ),
                 right: PremiumTextField(
                   controller: totalConsumptionController,
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Consumption required' : null,
                   label: 'Consumption',
                 ),
               ),
@@ -396,13 +493,11 @@ class _BillScreenState extends State<BillScreen> {
                 left: PremiumTextField(
                   controller: warpRateController,
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
                   label: 'Rate',
                 ),
                 right: PremiumTextField(
                   controller: totalCutController,
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Rate required' : null,
                   label: 'Total Cut',
                 ),
               ),
@@ -425,13 +520,11 @@ class _BillScreenState extends State<BillScreen> {
               TwoFieldRow(
                 left: PremiumTextField(
                   controller: totalDoriController,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Dori required' : null,
                   label: 'Total Dori',
                 ),
                 right: PremiumTextField(
-                  controller: finalAmountController,
+                  controller: pagarController,
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Total required' : null,
                   label: 'Total',
                 ),
               ),
@@ -442,13 +535,6 @@ class _BillScreenState extends State<BillScreen> {
                     controller: zyadaBachaController,
                     keyboardType: TextInputType.none,
                     textColor: _lessZyadaColor,
-                    onChanged: (val) {
-                      final parsed = double.tryParse(val.trim());
-                      setState(() {
-                        _lessZyadaColor = parsed == null ? const Color(0xFF1E293B) : (parsed < 0 ? Colors.redAccent : Colors.green.shade700);
-                      });
-                    },
-                    validator: (v) => (v == null || v.isEmpty) ? 'Consumption required' : null,
                     label: 'Less / Excess',
                   ),
                 ),
@@ -464,282 +550,75 @@ class _BillScreenState extends State<BillScreen> {
       padding: const EdgeInsets.all(16),
       child: Form(
         key: _formKeys[1],
-        child: const Column(
+        child: Column(
           children: [
-            SizedBox(height: 24),
-            // PremiumTextField(
-            //   controller: totalCutController,
-            //   keyboardType: TextInputType.none,
-            //   label: 'Total Cut',
-            // ),
-            // const SizedBox(height: 24),
-            // PremiumTextField(
-            //   controller: totalConsumptionController,
-            //   keyboardType: TextInputType.number,
-            //   validator: (v) => (v == null || v.isEmpty) ? 'Total consumption required' : null,
-            //   label: 'Total Consumption',
-            // ),
-            // const SizedBox(height: 24),
-            // PremiumTextField(
-            //   controller: totalController,
-            //   keyboardType: TextInputType.none,
-            //   validator: (v) => (v == null || v.isEmpty) ? 'Total required' : null,
-            //   label: 'Total Amount',
-            // ),
-            // const SizedBox(height: 24),
-            // PremiumTextField(
-            //   controller: perCutController,
-            //   keyboardType: TextInputType.none,
-            //   label: 'Per Cut',
-            // ),
-            // const SizedBox(height: 24),
+            const SizedBox(height: 8),
+            PremiumTextField(
+              controller: marketCredit,
+              keyboardType: TextInputType.number,
+              label: 'Market Credit',
+            ),
+            TwoFieldRow(
+                left: PremiumTextField(
+                  controller: creditDate,
+                  keyboardType: TextInputType.text,
+                  label: 'Date',
+                ),
+                right: PremiumTextField(
+                  controller: creditParty,
+                  keyboardType: TextInputType.text,
+                  label: 'Party',
+                )),
+            TwoFieldRow(
+                left: PremiumTextField(
+                  controller: baleNo,
+                  keyboardType: TextInputType.number,
+                  label: 'Bale No',
+                ),
+                right: PremiumTextField(
+                  controller: totalTakha,
+                  keyboardType: TextInputType.number,
+                  label: 'Total Takha',
+                )),
+            TwoFieldRow(
+                left: PremiumTextField(
+                  controller: totalMtr,
+                  keyboardType: TextInputType.text,
+                  label: 'Total Meter',
+                ),
+                right: PremiumTextField(
+                  controller: creditRate,
+                  keyboardType: TextInputType.text,
+                  label: 'Rate',
+                )),
+            TwoFieldRow(
+                left: PremiumTextField(
+                  controller: creditAmount,
+                  keyboardType: TextInputType.text,
+                  label: 'Final Amount',
+                ),
+                right: PremiumTextField(
+                  controller: mtrAvg,
+                  keyboardType: TextInputType.text,
+                  label: 'Meter Avg',
+                )),
+            const PremiumDivider(),
+            TwoFieldRow(
+                left: PremiumTextField(
+                  textColor: Colors.green.shade700,
+                  controller: creditFinalAmount,
+                  keyboardType: TextInputType.number,
+                  label: 'Credit',
+                ),
+                right: PremiumTextField(
+                  textColor: Colors.red.shade700,
+                  controller: debitFinalAmount,
+                  keyboardType: TextInputType.number,
+                  label: 'Debit',
+                )),
+            PremiumAmountTile(finalAmount)
           ],
         ),
-      ),
-    );
-  }
-}
-
-class PremiumTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String? Function(String?)? validator;
-  final TextInputType keyboardType;
-  final bool readOnly;
-  final IconData? icon;
-  final String? prefixText;
-  final ValueChanged<String>? onChanged;
-  final Color? textColor;
-
-  const PremiumTextField({
-    super.key,
-    required this.controller,
-    required this.label,
-    this.validator,
-    this.keyboardType = TextInputType.text,
-    this.readOnly = false,
-    this.icon,
-    this.prefixText,
-    this.onChanged,
-    this.textColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 42,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E293B).withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(
-          color: const Color(0xFFD1D5DB),
-          width: 1,
-        ),
-      ),
-      child: TextFormField(
-        controller: controller,
-        readOnly: readOnly,
-        keyboardType: keyboardType,
-        onChanged: onChanged,
-        validator: validator,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: textColor ?? const Color(0xFF1E293B), // 👈 sirf yahan change
-          letterSpacing: 0.2,
-        ),
-        cursorColor: const Color(0xFF1D4ED8),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          ),
-          floatingLabelStyle: const TextStyle(
-            color: Color(0xFF1D4ED8),
-            fontWeight: FontWeight.w700,
-          ),
-          prefixText: prefixText,
-          prefixStyle: const TextStyle(
-            color: Color(0xFF1D4ED8),
-            fontWeight: FontWeight.w700,
-          ),
-          prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF1D4ED8), size: 20) : null,
-          filled: true,
-          fillColor: Colors.transparent,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF1D4ED8), width: 1.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-      ),
-    );
-  }
-}
-
-class PremiumButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final bool isLoading;
-  final List<Color>? gradientColors;
-
-  const PremiumButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.icon,
-    this.isLoading = false,
-    this.gradientColors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = gradientColors ?? const [Color(0xFF1E3A8A), Color(0xFF1D4ED8)];
-
-    return Container(
-      height: 42,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.first.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          disabledBackgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 0,
-        ),
-        child: isLoading
-            ? const SizedBox(
-                height: 22,
-                width: 22,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.4,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 20),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-class TwoFieldRow extends StatelessWidget {
-  final Widget left;
-  final Widget right;
-  final double spacing;
-  final int leftFlex;
-  final int rightFlex;
-
-  const TwoFieldRow({
-    super.key,
-    required this.left,
-    required this.right,
-    this.spacing = 10,
-    this.leftFlex = 1,
-    this.rightFlex = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0, top: 4.0), // Add some vertical spacing between rows
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: leftFlex,
-            child: left,
-          ),
-          SizedBox(width: spacing),
-          Expanded(
-            flex: rightFlex,
-            child: right,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PremiumDivider extends StatelessWidget {
-  final Color? color;
-  final double thickness;
-  final double radius;
-  final EdgeInsetsGeometry? margin;
-
-  const PremiumDivider({
-    super.key,
-    this.color,
-    this.thickness = 3,
-    this.radius = 10,
-    this.margin = const EdgeInsets.symmetric(vertical: 12),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: margin!,
-      child: Divider(
-        color: color ?? Colors.green.shade400,
-        thickness: thickness,
-        radius: BorderRadius.circular(radius),
       ),
     );
   }

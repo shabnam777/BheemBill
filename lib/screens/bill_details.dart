@@ -1,8 +1,9 @@
 
 
 import 'package:billing_app/models/bill_item.dart';
-import 'package:billing_app/screens/bill_screen.dart';
+
 import 'package:billing_app/services/pdf_service.dart';
+import 'package:billing_app/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 
 class BillDetailPage extends StatelessWidget {

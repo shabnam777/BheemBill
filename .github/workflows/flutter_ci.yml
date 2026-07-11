@@ -11,6 +11,8 @@ jobs:
   release:
     name: Build APK, Create Release, Send Email
     runs-on: ubuntu-latest
+    permissions:
+    contents: write
 
     steps:
       - name: Checkout repository
@@ -46,19 +48,14 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk \
              release-output/billing_app-${{ steps.version.outputs.version }}.apk
 
-      # Creates a GitHub Release and uploads the APK as a downloadable asset
       - name: Create GitHub Release
-        id: gh_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "Billing App ${{ steps.version.outputs.version }}"
-          body: |
-            Automated build from commit ${{ github.sha }}.
-            Download the APK below and install it to update.
+          body: "Automated build from commit ${{ github.sha }}"
           files: release-output/*.apk
 
-      # Sends an email to notify that a new build/version is ready
       - name: Send email notification
         uses: dawidd6/action-send-mail@v3
         with:
@@ -70,10 +67,7 @@ jobs:
           to: ${{ secrets.EMAIL_TO }}
           from: Billing App CI
           body: |
-            A new version of Billing App has been built and released.
+            A new version of Billing App has been released.
 
             Version: ${{ steps.version.outputs.version }}
-            Commit: ${{ github.sha }}
-            Download APK: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}
-
-            Install the APK on your device to update to the latest version.
+            Download: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}
