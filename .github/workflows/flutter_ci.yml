@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write # needed to create GitHub Releases
+  contents: write # needed to auto-commit version bump + create GitHub Releases
 
 jobs:
   build:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -35,6 +37,30 @@ jobs:
         run: flutter test
         continue-on-error: true
 
+      # Automatically bumps patch version + build number in pubspec.yaml
+      # e.g. 1.0.0+1 -> 1.0.1+2 — no manual editing needed anymore.
+      - name: Auto-bump version
+        run: |
+          CURRENT=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
+          BUILD_NUM=$(echo "$CURRENT" | cut -d'+' -f2)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_BUILD=$((BUILD_NUM + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH+$NEW_BUILD"
+          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+          echo "Bumped version: $CURRENT -> $NEW_VERSION"
+
+      # Commits the bumped pubspec.yaml back to the repo so it's
+      # reflected in git history. [skip ci] prevents an infinite loop.
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "chore: auto-bump version [skip ci]" || echo "No changes to commit"
+          git push
+
       - name: Build release APK
         run: flutter build apk --release
 
@@ -44,8 +70,8 @@ jobs:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      # Read version from pubspec.yaml (e.g. 1.0.0+1)
-      - name: Extract version
+      # Re-read the (now bumped) version for the release tag + email
+      - name: Read version
         id: version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
@@ -58,7 +84,6 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk \
              release-output/billing_app-${{ steps.version.outputs.version }}.apk
 
-      # Creates a GitHub Release and uploads the APK as a downloadable asset
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -69,7 +94,6 @@ jobs:
             Download the APK below and install it to update.
           files: release-output/*.apk
 
-      # Sends an email to notify that a new build/version is ready
       - name: Send email notification
         uses: dawidd6/action-send-mail@v3
         with:

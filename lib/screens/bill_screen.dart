@@ -367,17 +367,19 @@ class _BillScreenState extends State<BillScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _goBack,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        side: const BorderSide(color: Colors.indigo),
-                      ),
-                      child: const Text('Prev', style: TextStyle(color: Colors.indigo)),
-                    ),
-                  ),
+                  _currentStep == 1
+                      ? Expanded(
+                          child: OutlinedButton(
+                            onPressed: _goBack,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              side: const BorderSide(color: Colors.indigo),
+                            ),
+                            child: const Text('Prev', style: TextStyle(color: Colors.indigo)),
+                          ),
+                        )
+                      : const SizedBox(),
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 3,
