@@ -572,7 +572,7 @@ class _BillScreenState extends State<BillScreen> {
             TwoFieldRow(
                 left: PremiumTextField(
                   controller: baleNo,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.text,
                   label: 'Bale No',
                 ),
                 right: PremiumTextField(
