@@ -28,7 +28,7 @@ class BillingApp extends StatelessWidget {
         home: const BillScreen(),
         routes: {
           '/bill_details': (context) {
-            final billItem = ModalRoute.of(context)!.settings.arguments as BillItem;
+            final billItem = ModalRoute.of(context)?.settings.arguments as BillItem;
             return BillDetailPage(billItem: billItem);
           },
         },

@@ -1,3 +1,4 @@
+import 'package:billing_app/models/bill_item.dart';
 import 'package:flutter/material.dart';
 
 class PremiumTextField extends StatelessWidget {
@@ -248,7 +249,7 @@ class PremiumDivider extends StatelessWidget {
 /// Returns a premium-looking ListTile card showing just the final amount.
 Widget PremiumAmountTile(double amount) {
   return Padding(
-    padding: const EdgeInsets.only(top:8.0),
+    padding: const EdgeInsets.only(top: 8.0),
     child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 3),
       decoration: BoxDecoration(
@@ -305,6 +306,107 @@ Widget PremiumAmountTile(double amount) {
           ],
         ),
       ),
+    ),
+  );
+}
+
+/// Shows saved bills for a selected date inside a modal dialog.
+/// Pass the list of BillItems returned by BillStorageService.getBillsByDate().
+void showBillViewModal(BuildContext context, List<BillItem> bills) {
+  showDialog(
+    context: context,
+    builder: (_) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 520, maxWidth: 420),
+        child: bills.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Bill Not Found.'),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Saved Bills',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: bills.length,
+                        itemBuilder: (context, index) {
+                          final item = bills[index];
+                          return ExpansionTile(
+                            title: Text(
+                              item.partyName.isEmpty ? 'Bill ${index + 1}' : item.partyName,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: Text('Total: ₹${item.total.toStringAsFixed(0)}'),
+                            children: [
+                              _modalRow('Weft Name / Qty', item.weftName),
+                              _modalRow('Set No.', item.setNo),
+                              _modalRow('Rate', item.rate.toStringAsFixed(2)),
+                              _modalRow('Total Consumption', item.totalConsumption.toStringAsFixed(2)),
+                              _modalRow('Per Cut', item.perCut.toStringAsFixed(2)),
+                              _modalRow('Pagar', item.pagar.toStringAsFixed(2)),
+                              _modalRow('Total Dori', item.totalDori.toStringAsFixed(2)),
+                              _modalRow('Zyada Bacha', item.zyadaBacha.toStringAsFixed(2)),
+                              _modalRow('Dori', item.dori.toStringAsFixed(2)),
+                              _modalRow('Total Cut', item.totalCut.toStringAsFixed(2)),
+                              _modalRow('Grand Total', item.total.toStringAsFixed(0), bold: true),
+                              const Divider(),
+                              _modalRow('Market Credit', item.marketCredit.toStringAsFixed(2)),
+                              _modalRow('Credit Party', item.creditParty),
+                              _modalRow('Bale No', item.baleNo),
+                              _modalRow('Total Takha', item.totalTakha.toStringAsFixed(2)),
+                              _modalRow('Total Meter', item.totalMtr.toStringAsFixed(2)),
+                              _modalRow('Credit Total', item.creditFinalAmount.toStringAsFixed(0)),
+                              _modalRow('Debit Total', item.debitFinalAmount.toStringAsFixed(0)),
+                              _modalRow('Net Final Amount', item.finalAmount.toStringAsFixed(2), bold: true),
+                              const SizedBox(height: 8),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    ),
+  );
+}
+
+Widget _modalRow(String label, String value, {bool bold = false}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: bold ? 16 : 13,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+            color: const Color(0xFF1E293B),
+          ),
+        ),
+      ],
     ),
   );
 }
