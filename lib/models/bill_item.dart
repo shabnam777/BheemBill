@@ -1,12 +1,12 @@
 import 'dart:convert';
 
-/// Represents ONE complete bill — combines fields from BOTH form steps:
-/// Step 1 (weft/warp/cut details) + Step 2 (market credit/debit details).
+/// Represents ONE complete bill — Step 1 (weft/warp/cut) + Step 2 (credit/debit).
 class BillItem {
   // ---------- STEP 1 fields ----------
-  String partyName;
-  String weftName;
-  String setNo;
+  int invoiceNumber;
+  String partyName; // Weft Name + Party Name (combined)
+  String weftName; // Warp Name + Party Name
+  String setNo; // Market Debit
   double rate;
   double rateGST;
   double totalConsumption;
@@ -24,7 +24,25 @@ class BillItem {
   DateTime startDate;
   DateTime endDate;
 
-  // ---------- STEP 2 fields ----------
+  // ---------- Weft carry-forward fields ----------
+  double previousWeft;
+  double newWeft;
+  double balanceWeft;
+  double count;
+  double lagat;
+  double usedWeft;
+
+  // ---------- Cut carry-forward fields ----------
+  double previousCut;
+  double newCut;
+  double soldCut;
+  double remainingCut;
+  double preWeftAvg;
+  double preCutAvg;
+  double weftAvgAmt;
+  double cutAvgAmt;
+
+  // ---------- STEP 2 fields (market credit/debit) ----------
   double marketCredit;
   String creditDate;
   String creditParty;
@@ -39,10 +57,15 @@ class BillItem {
   double finalAmount;
 
   BillItem({
+    this.invoiceNumber = 0,
     this.partyName = '',
     this.weftName = '',
     this.setNo = '',
     this.rate = 0,
+    this.preWeftAvg = 0,
+    this.preCutAvg = 0,
+    this.weftAvgAmt = 0,
+    this.cutAvgAmt = 0,
     this.totalConsumption = 0,
     this.perCut = 0,
     this.pagar = 0,
@@ -59,6 +82,16 @@ class BillItem {
     this.otherExpense = 0,
     this.warpRate = 0,
     this.warpTotal = 0,
+    this.previousWeft = 0,
+    this.newWeft = 0,
+    this.balanceWeft = 0,
+    this.count = 0,
+    this.lagat = 0,
+    this.usedWeft = 0,
+    this.previousCut = 0,
+    this.newCut = 0,
+    this.soldCut = 0,
+    this.remainingCut = 0,
     this.marketCredit = 0,
     this.creditDate = '',
     this.creditParty = '',
@@ -75,14 +108,10 @@ class BillItem {
 
   factory BillItem.empty() => BillItem();
 
-  /// Safely parses a date value that might be a String (from JSON),
-  /// a DateTime already, or missing/null entirely.
   static DateTime _parseDate(dynamic value) {
     if (value == null) return DateTime.now();
     if (value is DateTime) return value;
-    if (value is String) {
-      return DateTime.tryParse(value) ?? DateTime.now();
-    }
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
     return DateTime.now();
   }
 
@@ -100,10 +129,15 @@ class BillItem {
   }
 
   factory BillItem.fromMap(Map<String, dynamic> map) => BillItem(
+        invoiceNumber: map['invoiceNumber'] is int ? map['invoiceNumber'] : int.tryParse(map['invoiceNumber']?.toString() ?? '') ?? 0,
         partyName: _parseString(map['partyName']),
         weftName: _parseString(map['weftName']),
         setNo: _parseString(map['setNo']),
         rate: _parseDouble(map['rate']),
+        preWeftAvg: _parseDouble(map['preWeftAvg']),
+        preCutAvg: _parseDouble(map['preCutAvg']),
+        weftAvgAmt: _parseDouble(map['weftAvgAmt']),
+        cutAvgAmt: _parseDouble(map['cutAvgAmt']),
         totalConsumption: _parseDouble(map['totalConsumption']),
         perCut: _parseDouble(map['perCut']),
         pagar: _parseDouble(map['pagar']),
@@ -120,6 +154,16 @@ class BillItem {
         otherExpense: _parseDouble(map['otherExpense']),
         warpRate: _parseDouble(map['warpRate']),
         warpTotal: _parseDouble(map['warpTotal']),
+        previousWeft: _parseDouble(map['previousWeft']),
+        newWeft: _parseDouble(map['newWeft']),
+        balanceWeft: _parseDouble(map['balanceWeft']),
+        count: _parseDouble(map['count']),
+        lagat: _parseDouble(map['lagat']),
+        usedWeft: _parseDouble(map['usedWeft']),
+        previousCut: _parseDouble(map['previousCut']),
+        newCut: _parseDouble(map['newCut']),
+        soldCut: _parseDouble(map['soldCut']),
+        remainingCut: _parseDouble(map['remainingCut']),
         marketCredit: _parseDouble(map['marketCredit']),
         creditDate: _parseString(map['creditDate']),
         creditParty: _parseString(map['creditParty']),
@@ -134,6 +178,7 @@ class BillItem {
       );
 
   Map<String, dynamic> toMap() => {
+        'invoiceNumber': invoiceNumber,
         'partyName': partyName,
         'weftName': weftName,
         'setNo': setNo,
@@ -151,9 +196,23 @@ class BillItem {
         'endDate': endDate.toIso8601String(),
         'rateGST': rateGST,
         'kg': kg,
+        'preWeftAvg':preWeftAvg,
+        'preCutAvg':preCutAvg,
+        'weftAvgAmt':weftAvgAmt,
+        'cutAvgAmt':cutAvgAmt,
         'otherExpense': otherExpense,
         'warpRate': warpRate,
         'warpTotal': warpTotal,
+        'previousWeft': previousWeft,
+        'newWeft': newWeft,
+        'balanceWeft': balanceWeft,
+        'count': count,
+        'lagat': lagat,
+        'usedWeft': usedWeft,
+        'previousCut': previousCut,
+        'newCut': newCut,
+        'soldCut': soldCut,
+        'remainingCut': remainingCut,
         'marketCredit': marketCredit,
         'creditDate': creditDate,
         'creditParty': creditParty,
@@ -170,70 +229,4 @@ class BillItem {
   factory BillItem.fromJson(String source) => BillItem.fromMap(jsonDecode(source));
 
   String toJson() => jsonEncode(toMap());
-
-  BillItem copyWith({
-    String? partyName,
-    String? weftName,
-    String? setNo,
-    double? rate,
-    double? totalConsumption,
-    double? perCut,
-    double? pagar,
-    double? totalDori,
-    double? zyadaBacha,
-    double? finalAmount,
-    double? dori,
-    double? totalCut,
-    double? total,
-    DateTime? startDate,
-    DateTime? endDate,
-    double? otherExpense,
-    double? warpRate,
-    double? warpTotal,
-    double? marketCredit,
-    String? creditDate,
-    String? creditParty,
-    String? baleNo,
-    double? totalTakha,
-    double? totalMtr,
-    double? creditRate,
-    double? creditAmount,
-    double? mtrAvg,
-    double? creditFinalAmount,
-    double? debitFinalAmount,
-  }) {
-    return BillItem(
-      partyName: partyName ?? this.partyName,
-      weftName: weftName ?? this.weftName,
-      setNo: setNo ?? this.setNo,
-      rate: rate ?? this.rate,
-      totalConsumption: totalConsumption ?? this.totalConsumption,
-      perCut: perCut ?? this.perCut,
-      pagar: pagar ?? this.pagar,
-      totalDori: totalDori ?? this.totalDori,
-      zyadaBacha: zyadaBacha ?? this.zyadaBacha,
-      finalAmount: finalAmount ?? this.finalAmount,
-      dori: dori ?? this.dori,
-      totalCut: totalCut ?? this.totalCut,
-      total: total ?? this.total,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
-      rateGST: rateGST,
-      kg: kg,
-      otherExpense: otherExpense ?? this.otherExpense,
-      warpRate: warpRate ?? this.warpRate,
-      warpTotal: warpTotal ?? this.warpTotal,
-      marketCredit: marketCredit ?? this.marketCredit,
-      creditDate: creditDate ?? this.creditDate,
-      creditParty: creditParty ?? this.creditParty,
-      baleNo: baleNo ?? this.baleNo,
-      totalTakha: totalTakha ?? this.totalTakha,
-      totalMtr: totalMtr ?? this.totalMtr,
-      creditRate: creditRate ?? this.creditRate,
-      creditAmount: creditAmount ?? this.creditAmount,
-      mtrAvg: mtrAvg ?? this.mtrAvg,
-      creditFinalAmount: creditFinalAmount ?? this.creditFinalAmount,
-      debitFinalAmount: debitFinalAmount ?? this.debitFinalAmount,
-    );
-  }
 }

@@ -17,13 +17,14 @@ class _BillScreenState extends State<BillScreen> {
   int _currentStep = 0;
   double bales = 0;
   double finalAmount = 0;
+  double lastAmount = 0;
   final int _totalSteps = 3;
   final List<GlobalKey<FormState>> _formKeys = List.generate(3, (_) => GlobalKey<FormState>());
 
   // Start aur End date ek saath select karne ke liye (Date RANGE)
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
-
+  int _invoiceNumber = 1;
   final partyNameController = TextEditingController(); // ab isi me Weft Name + Party Name dono aayenge
   final weftNameController = TextEditingController();
   final previousWeftController = TextEditingController();
@@ -36,6 +37,12 @@ class _BillScreenState extends State<BillScreen> {
   final warpRateController = TextEditingController();
   final rateController = TextEditingController();
   final weftTotalController = TextEditingController();
+  final weftAVGController = TextEditingController();
+  final weftAVGAMTController = TextEditingController();
+  final cutAVGController = TextEditingController();
+  final cutAVGAMTController = TextEditingController();
+  final takhaAVGController = TextEditingController();
+  final takhaAVGAMTController = TextEditingController();
   final kgController = TextEditingController();
   final totalConsumptionController = TextEditingController();
   final perCutController = TextEditingController();
@@ -47,6 +54,8 @@ class _BillScreenState extends State<BillScreen> {
   final totalCutController = TextEditingController();
   final previousCutController = TextEditingController();
   final newCutController = TextEditingController();
+  final cutBalanceController = TextEditingController();
+  final takhaBalanceController = TextEditingController();
   final soldCutController = TextEditingController();
   final remainingCutController = TextEditingController();
   final totalController = TextEditingController();
@@ -71,6 +80,8 @@ class _BillScreenState extends State<BillScreen> {
   final creditFinalAmount = TextEditingController();
   final debitFinalAmount = TextEditingController();
   final mtrAvg = TextEditingController();
+
+  late BillItem? bill;
 
   Color _lessZyadaColor = const Color(0xFF1E293B);
 
@@ -199,28 +210,67 @@ class _BillScreenState extends State<BillScreen> {
     weftTotalController.text = gstAmount(item.rate, item.kg).toStringAsFixed(2);
   }
 
-  BillItem toBillItem() => BillItem(
-        partyName: partyNameController.text,
-        weftName: weftNameController.text,
-        setNo: marketDebtControler.text,
-        rate: double.tryParse(rateController.text) ?? 0,
-        totalConsumption: double.tryParse(totalConsumptionController.text) ?? 0,
-        perCut: double.tryParse(perCutController.text) ?? 0,
-        pagar: double.tryParse(pagarController.text) ?? 0,
-        totalDori: double.tryParse(totalDoriController.text) ?? 0,
-        zyadaBacha: double.tryParse(zyadaBachaController.text) ?? 0,
-        finalAmount: double.tryParse(finalAmountController.text) ?? 0,
-        dori: double.tryParse(doriController.text) ?? 0,
-        totalCut: double.tryParse(totalCutController.text) ?? 0,
-        startDate: _startDate,
-        endDate: _endDate,
-        kg: double.tryParse(kgController.text) ?? 0,
-        rateGST: gstAmount(double.tryParse(rateController.text) ?? 0, double.tryParse(kgController.text) ?? 0),
-        total: totalAmount(
-          double.tryParse(weftTotalController.text) ?? 0,
-          double.tryParse(totalConsumptionController.text) ?? 0,
-        ),
-      );
+  BillItem toBillItem() {
+    setFinalAmounts(); // credit/debit/net final amount fresh calculate karke controllers mein daal deta hai
+
+    return BillItem(
+      invoiceNumber: _invoiceNumber,
+      partyName: partyNameController.text,
+      weftName: weftNameController.text,
+      setNo: marketDebtControler.text,
+      rate: double.tryParse(rateController.text) ?? 0,
+      totalConsumption: double.tryParse(totalConsumptionController.text) ?? 0,
+      perCut: double.tryParse(perCutController.text) ?? 0,
+      pagar: double.tryParse(pagarController.text) ?? 0,
+      totalDori: double.tryParse(totalDoriController.text) ?? 0,
+      zyadaBacha: double.tryParse(zyadaBachaController.text) ?? 0,
+      finalAmount: finalAmount, // FIX: dead finalAmountController ki jagah ab real computed value
+      dori: double.tryParse(doriController.text) ?? 0,
+      totalCut: double.tryParse(totalCutController.text) ?? 0,
+      startDate: _startDate,
+      endDate: _endDate,
+      kg: double.tryParse(kgController.text) ?? 0,
+      rateGST: gstAmount(double.tryParse(rateController.text) ?? 0, double.tryParse(kgController.text) ?? 0),
+      total: totalAmount(
+        double.tryParse(weftTotalController.text) ?? 0,
+        double.tryParse(totalConsumptionController.text) ?? 0,
+      ),
+      otherExpense: double.tryParse(otherExpenseController.text) ?? 0,
+      warpRate: double.tryParse(warpRateController.text) ?? 0,
+      warpTotal: double.tryParse(warpTotalController.text) ?? 0,
+
+      // Weft carry-forward fields
+      previousWeft: double.tryParse(previousWeftController.text) ?? 0,
+      newWeft: double.tryParse(newWeftController.text) ?? 0,
+      balanceWeft: double.tryParse(balanceWeftController.text) ?? 0,
+      count: double.tryParse(countController.text) ?? 0,
+      lagat: double.tryParse(lagatController.text) ?? 0,
+      usedWeft: double.tryParse(usedWeftController.text) ?? 0,
+
+      preCutAvg: double.tryParse(cutAVGController.text) ?? 0,
+      preWeftAvg: double.tryParse(weftAVGController.text) ?? 0,
+      cutAvgAmt: double.tryParse(cutAVGAMTController.text) ?? 0,
+      weftAvgAmt: double.tryParse(weftAVGController.text) ?? 0,
+      // Cut carry-forward fields
+      previousCut: double.tryParse(previousCutController.text) ?? 0,
+      newCut: double.tryParse(newCutController.text) ?? 0,
+      soldCut: double.tryParse(soldCutController.text) ?? 0,
+      remainingCut: double.tryParse(remainingCutController.text) ?? 0,
+
+      // Step 2 fields
+      marketCredit: double.tryParse(marketCredit.text) ?? 0,
+      creditDate: creditDate.text,
+      creditParty: creditParty.text,
+      baleNo: baleNo.text,
+      totalTakha: double.tryParse(totalTakha.text) ?? 0,
+      totalMtr: double.tryParse(totalMtr.text) ?? 0,
+      creditRate: double.tryParse(creditRate.text) ?? 0,
+      creditAmount: double.tryParse(creditAmount.text) ?? 0,
+      mtrAvg: double.tryParse(mtrAvg.text) ?? 0,
+      creditFinalAmount: double.tryParse(creditFinalAmount.text) ?? 0,
+      debitFinalAmount: double.tryParse(debitFinalAmount.text) ?? 0,
+    );
+  }
 
   String _formatRange(DateTime start, DateTime end) {
     final df = DateFormat('dd/MM/yyyy');
@@ -260,10 +310,23 @@ class _BillScreenState extends State<BillScreen> {
     }
   }
 
+  Future<void> _assignInvoiceNumber() async {
+    final next = await BillStorageService.getNextInvoiceNumber();
+    setState(() => _invoiceNumber = next);
+  }
+
+  Future<void> getPreviousBill() async {
+    bill = await BillStorageService.getBillByInvoiceNumber(_invoiceNumber);
+    print(bill?.invoiceNumber);
+  }
+
   @override
   void initState() {
     super.initState();
     billDateController.text = _formatRange(_startDate, _endDate);
+    billDateController.text = _formatRange(_startDate, _endDate);
+    _assignInvoiceNumber();
+
     rateController.addListener(_updateGST);
     warpRateController.addListener(updateWarpTotal);
     totalCutController.addListener(updateWarpTotal);
@@ -406,6 +469,43 @@ class _BillScreenState extends State<BillScreen> {
     showBillViewModal(context, bills);
   }
 
+  finalCalc() {
+    // weft avg rate
+
+    final weftTotal = double.tryParse(weftTotalController.text) ?? 1;
+    const preWeftTotal = 1;
+    final preWeft = double.tryParse(previousWeftController.text) ?? 1;
+    final newWeft = double.tryParse(newWeftController.text) ?? 1;
+    final wftAvg = weftTotal + preWeftTotal / preWeft + newWeft;
+    weftAVGController.text = wftAvg.toStringAsFixed(2);
+    final kg = double.tryParse(kgController.text) ?? 1;
+    weftAVGAMTController.text = (wftAvg * kg).toStringAsFixed(0);
+
+    // cut avg rate
+
+    final preCut = double.tryParse(previousCutController.text) ?? 1;
+    final warpTotal = double.tryParse(warpTotalController.text) ?? 0;
+
+    final newCut = double.tryParse(newCutController.text) ?? 1;
+    final cutAvg = bill!.preCutAvg * preCut + warpTotal * (preCut * newCut);
+
+    cutAVGController.text = cutAvg.toStringAsFixed(2);
+
+    final cutBalance = double.tryParse(cutBalanceController.text) ?? 1;
+    cutAVGAMTController.text = (cutBalance * cutAvg).toStringAsFixed(0);
+
+    // takha
+
+    final takhaBalance = double.tryParse(takhaBalanceController.text) ?? 1;
+
+    final lagat = double.tryParse(lagatController.text) ?? 1;
+
+    final takhaAVGAmt = takhaBalance * lagat * wftAvg + takhaBalance * cutAvg + takhaBalance * pagar / takhaBalance;
+    takhaAVGAMTController.text = takhaAVGAmt.toStringAsFixed(0);
+    takhaAVGController.text = (takhaAVGAmt / takhaBalance).toStringAsFixed(0);
+    lastAmount = takhaAVGAmt + (cutBalance * cutAvg) + (wftAvg * kg);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLastStep = _currentStep == _totalSteps - 1;
@@ -537,6 +637,7 @@ class _BillScreenState extends State<BillScreen> {
                     'Bill Period',
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                   ),
+                  trailing: Text('Invoice #$_invoiceNumber', style: const TextStyle(color: Color.fromARGB(179, 24, 23, 23), fontSize: 16)),
                   subtitle: Text(
                     _formatRange(_startDate, _endDate),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
@@ -557,7 +658,8 @@ class _BillScreenState extends State<BillScreen> {
                   label: 'Other Expense',
                 ),
               ),
-              const SizedBox(height: 8),
+
+              const PremiumDivider(),
 
               // ---- Ek row me: Weft+Party Name (bada) + KG (chota) + Rate (chota) ----
               TwoFieldRow(
@@ -733,85 +835,182 @@ class _BillScreenState extends State<BillScreen> {
   }
 
   Widget _buildStep3() {
+    setState(() {
+      updateWeft();
+      updateCut();
+    });
     return SingleChildScrollView(
       child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
-            child: Form(
-              key: _formKeys[2],
-              child: IntrinsicHeight(
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(8),
+                decoration:
+                    BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                child: Form(
+                  key: _formKeys[2],
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // LEFT COLUMN — Cut Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Cut Details',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                              ),
+                              const SizedBox(height: 12),
+                              // Yahan apne "cut" wale fields daalo, jaise:
+                              PremiumTextField(controller: previousCutController, label: 'Prevoius Cut'),
+                              const SizedBox(height: 12),
+                              PremiumTextField(controller: newCutController, label: 'New Cut'),
+                              const SizedBox(height: 12),
+
+                              PremiumTextField(controller: soldCutController, label: 'Sold Cut'),
+                              const SizedBox(height: 12),
+                              PremiumTextField(controller: remainingCutController, label: 'Remaining Cut'),
+                            ],
+                          ),
+                        ),
+
+                        // VERTICAL DIVIDER
+                        VerticalDivider(
+                          width: 25, // Divider ke liye total space
+                          thickness: 3, // Line ki width
+                          color: const Color.fromARGB(255, 23, 10, 136),
+                          indent: 35, // Top se gap
+                          endIndent: 5,
+                          radius: BorderRadius.circular(8), // Bottom se gap
+                        ),
+
+                        // RIGHT COLUMN — Weft Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Weft Details',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                              ),
+                              const SizedBox(height: 12),
+                              // Yahan apne "weft" wale fields daalo, jaise:
+                              PremiumTextField(controller: previousWeftController, label: 'Previous Weft '),
+                              const SizedBox(height: 12),
+                              PremiumTextField(controller: newWeftController, label: 'New Weft'),
+                              const SizedBox(height: 12),
+                              PremiumTextField(controller: balanceWeftController, label: 'Balance Weft'),
+                              const SizedBox(height: 12),
+
+                              PremiumTextField(controller: usedWeftController, label: 'Used Weft'),
+                              const SizedBox(height: 12),
+
+                              TwoFieldRow(
+                                left: PremiumTextField(controller: countController, label: 'Count'),
+                                right: PremiumTextField(controller: lagatController, label: 'Takha Lagat'),
+                              )
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const PremiumDivider(),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // LEFT COLUMN — Cut Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Cut Details',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-                          ),
-                          const SizedBox(height: 12),
-                          // Yahan apne "cut" wale fields daalo, jaise:
-                          PremiumTextField(controller: previousCutController, label: 'Prevoius Cut'),
-                          const SizedBox(height: 12),
-                          PremiumTextField(controller: newCutController, label: 'New Cut'),
-                          const SizedBox(height: 12),
-
-                          PremiumTextField(controller: soldCutController, label: 'Sold Cut'),
-                          const SizedBox(height: 12),
-                          PremiumTextField(controller: remainingCutController, label: 'Remaining Cut'),
-                        ],
-                      ),
+                    Expanded(child: PremiumTextField(controller: balanceWeftController, label: 'KG')),
+                    const SizedBox(width: 60, child: Align(alignment: AlignmentGeometry.center, child: Text("Weft"))),
+                    Expanded(child: PremiumTextField(controller: weftAVGController, label: 'AVG.Rate')),
+                    const SizedBox(
+                      width: 8,
                     ),
-
-                    // VERTICAL DIVIDER
-                    VerticalDivider(
-                      width: 25, // Divider ke liye total space
-                      thickness: 3, // Line ki width
-                      color: const Color.fromARGB(255, 23, 10, 136),
-                      indent: 35, // Top se gap
-                      endIndent: 5,
-                      radius: BorderRadius.circular(8), // Bottom se gap
-                    ),
-
-                    // RIGHT COLUMN — Weft Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Weft Details',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-                          ),
-                          const SizedBox(height: 12),
-                          // Yahan apne "weft" wale fields daalo, jaise:
-                          PremiumTextField(controller: previousWeftController, label: 'Previous Weft '),
-                          const SizedBox(height: 12),
-                          PremiumTextField(controller: newWeftController, label: 'New Weft'),
-                          const SizedBox(height: 12),
-                          PremiumTextField(controller: balanceWeftController, label: 'Balance Weft'),
-                          const SizedBox(height: 12),
-
-                          PremiumTextField(controller: usedWeftController, label: 'Used Weft'),
-                          const SizedBox(height: 12),
-
-                          TwoFieldRow(
-                            left: PremiumTextField(controller: countController, label: 'Count'),
-                            right: PremiumTextField(controller: lagatController, label: 'Takha Lagat'),
-                          )
-                        ],
-                      ),
-                    ),
+                    Expanded(child: PremiumTextField(controller: weftAVGAMTController, label: 'Amt')),
                   ],
                 ),
               ),
-            ),
-           
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: PremiumTextField(controller: cutBalanceController, label: 'Balance')),
+                    const SizedBox(width: 60, child: Align(alignment: AlignmentGeometry.center, child: Text("Cut"))),
+                    Expanded(child: PremiumTextField(controller: cutAVGController, label: 'AVG.Rate')),
+                    const SizedBox(
+                      width: 8,
+                    ),
+                    Expanded(child: PremiumTextField(controller: cutAVGAMTController, label: 'Amt')),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: PremiumTextField(controller: takhaBalanceController, label: 'Balance')),
+                    const SizedBox(width: 60, child: Align(alignment: AlignmentGeometry.center, child: Text("Takha"))),
+                    Expanded(child: PremiumTextField(controller: takhaAVGController, label: 'AVG.Rate')),
+                    const SizedBox(
+                      width: 8,
+                    ),
+                    Expanded(child: PremiumTextField(controller: takhaAVGAMTController, label: 'Amt')),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Total",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w400),
+                    ),
+                    Text(
+                      '$lastAmount',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w400),
+                    )
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Market Debt / Credt",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w400),
+                    ),
+                    Text(
+                      '0',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w400),
+                    )
+                  ],
+                ),
+              ),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    width: 150,
+                    child: PremiumDivider(
+                      color: Colors.black,
+                    ),
+                  )
+                ],
+              )
+            ],
           )),
     );
   }
